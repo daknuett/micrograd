@@ -10,6 +10,8 @@ class Value:
         self._prev = set(_children)
         self._op = _op # the op that produced this node, for graphviz / debugging / etc
 
+        self._fixed_grad = False
+        
     def __add__(self, other):
         other = other if isinstance(other, Value) else Value(other)
         out = Value(self.data + other.data, (self, other), '+')
@@ -51,6 +53,18 @@ class Value:
 
         return out
 
+    def leaky_relu(self, negative_slope=1e-2):
+        out = Value(negative_slope * self.data if self.data < 0 else self.data, (self,), 'LkReLU')
+
+        def _backward():
+            if(out.data > 0):
+                self.grad += out.grad
+            else:
+                self.grad += negative_slope * out.grad
+        out._backward = _backward
+        return out
+
+
     def backward(self):
 
         # topological order all of the children in the graph
@@ -68,6 +82,9 @@ class Value:
         self.grad = 1
         for v in reversed(topo):
             v._backward()
+            
+    def fix_grad(self):
+        self._fixed_grad = True
 
     def __neg__(self): # -self
         return self * -1

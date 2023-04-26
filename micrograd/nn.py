@@ -12,20 +12,31 @@ class Module:
 
 class Neuron(Module):
 
-    def __init__(self, nin, nonlin=True):
+    def __init__(self, nin, nonlin=True, leaky=True):
         self.w = [Value(random.uniform(-1,1)) for _ in range(nin)]
         self.b = Value(0)
         self.nonlin = nonlin
+        self.leaky = leaky
 
     def __call__(self, x):
         act = sum((wi*xi for wi,xi in zip(self.w, x)), self.b)
-        return act.relu() if self.nonlin else act
+        if(not self.nonlin):
+            return act
+        if(not self.leaky):
+            return act.relu()
+        return act.leaky_relu()
 
     def parameters(self):
         return self.w + [self.b]
 
     def __repr__(self):
-        return f"{'ReLU' if self.nonlin else 'Linear'}Neuron({len(self.w)})"
+        rlus = 'LkReLU' if self.leaky else 'ReLU' 
+        return f"{rlus if self.nonlin else 'Linear'}Neuron({len(self.w)})"
+    
+    def fix_grad(self):
+        for w in self.w:
+            w.fix_grad()
+        self.b.fix_grad()
 
 class Layer(Module):
 
